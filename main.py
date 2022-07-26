@@ -15,8 +15,6 @@ def main():
 
     env = Environment(dims)
     rob = Robot(start, 'robot3.png', 30) # the width of the robot is 80 pixels
-    axis = pygame.image.load('pixel-coordinate.png')
-
     # time
     current_time = 0
     previous_time = pygame.time.get_ticks()
@@ -35,7 +33,6 @@ def main():
         # update the display
         pygame.display.update()
         env.map.fill(env.black) # fill the entire screen with black
-        env.map.blit(axis, (0, 0))
         rob.draw_robot(env.map)
 
         # update the time
@@ -44,8 +41,8 @@ def main():
         previous_time = current_time
 
         # update the robot
-        env.write_info(rob.vl, rob.vr, rob.theta, rob.pedal, rob.steering, rob.x, rob.y)
         rob.move_robot(event, dt)
+        env.write_info(rob.vl, rob.vr, rob.theta, rob.pedal, rob.steering, rob.x, rob.y)
         env.draw_trail((rob.x, rob.y))
         env.draw_robot_frame((rob.x, rob.y), rob.theta)
 

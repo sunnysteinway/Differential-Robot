@@ -1,7 +1,15 @@
+from tkinter import LEFT
 import pygame
 import math
 
 CONSTANT = 3779.52
+# the maximum and the minimum speed of the robot
+MAX_SPEED = 30
+MIN_SPEED = -10
+
+# the left and the right limit of the steering wheel of the robot
+LEFT_LIMIT = -270
+RIGHT_LIMIT = 270
 
 class Robot:
 
@@ -13,10 +21,9 @@ class Robot:
         # the configuration of the robot
         self.w = width
         self.pedal = 0
-        self.MAX_PEDAL = 100
         self.steering = 0
-        self.vl = 0.0005 * self.m2p   # the velocity of the left wheel
-        self.vr = 0.0005 * self.m2p   # the velocity of the right wheel
+        self.vl = 0   # the velocity of the left wheel
+        self.vr = 0   # the velocity of the right wheel
 
         # initialization
         self.x, self.y = start_pos
@@ -31,17 +38,43 @@ class Robot:
         '''
         map.blit(self.rotated, self.rect)
 
-    def __engine(self):
+    def __steering_wheel(self):
 
-        MAX_SPEED = 20
-        MIN_SPEED = -15
+        last_steering = 0
 
-        if self.vl >= MAX_SPEED:
+        if self.steering == last_steering:
+            pass
+
+        elif self.steering == 0:
+            self.vl = (self.vr + self.vl) / 2
+            self.vr = self.vl
+        else:
+            if self.steering > RIGHT_LIMIT:
+                self.steering = RIGHT_LIMIT
+            
+            elif self.steering < LEFT_LIMIT:
+                self.steering = LEFT_LIMIT
+            
+            # adjust the speed of the right and left wheel based on the steering wheel
+            self.vl += self.steering * 0.0001
+            self.vr -= self.steering * 0.0001
+
+        last_steering = self.steering
+
+    def __engine(self, dt):
+        '''
+        The physics of the engine
+        '''
+        # adjust the speed based on the pedal
+        self.vl += self.pedal * dt * 0.5
+        self.vr += self.pedal * dt * 0.5
+
+        if self.vl > MAX_SPEED:
             self.vl = MAX_SPEED
         elif self.vl < MIN_SPEED:
             self.vl = MIN_SPEED
 
-        if self.vr >= MAX_SPEED:
+        if self.vr > MAX_SPEED:
             self.vr = MAX_SPEED
         elif self.vr < MIN_SPEED:
             self.vr = MIN_SPEED
@@ -50,11 +83,18 @@ class Robot:
         '''
         Update the kinematics of the robot
         '''
+        # the speed may be slow down due to the friction
+        if self.vr > 0 and self.vl > 0:
+            self.vl -= 0.23 * self.vl * dt
+            self.vr -= 0.23 * self.vr * dt
+        elif self.pedal >= 0:
+            self.vl = self.vr = 0
+
+        # update the position (world frame)
         self.x += ((self.vl + self.vr) / 2) * math.cos(self.theta) * dt
         self.y -= ((self.vl + self.vr) / 2) * math.sin(self.theta) * dt
         self.theta += (-self.vl + self.vr) / self.w * dt
         self.theta %= 2 * math.pi   # we only want the value of the theta lies between 0 and 360
-
 
     def move_robot(self, event=None, dt=0):
 
@@ -65,26 +105,21 @@ class Robot:
                 # find which key is pressed
                 if event.key == pygame.K_w:
                     self.pedal += 1
-                    self.pedal = min(self.pedal, 10)
-                    self.vl += 0.1 * self.pedal
-                    self.vr += 0.1 * self.pedal
+                    self.pedal = min(self.pedal, 15)
 
                 elif event.key == pygame.K_s:
                     self.pedal -= 1
-                    self.pedal = max(self.pedal, 0)
-                    self.vl -= 0.1 * self.pedal
-                    self.vr -= 0.1 * self.pedal
+                    self.pedal = max(self.pedal, -1)
 
                 elif event.key == pygame.K_a:
-                    self.vr += 0.05
-                    self.vl -= 0.05
+                    self.steering -= 30
                 elif event.key == pygame.K_d:
-                    self.vr -= 0.05
-                    self.vl += 0.05
-
+                    self.steering += 30
                 elif event.key == pygame.K_SPACE:
-                    self.vl = self.vr = self.pedal = 0
-
+                    self.pedal = 0
+                    self.vl -= 0.1
+                    self.vr -= 0.1
+                    
                 elif event.key == pygame.K_KP4:
                     self.vl += 0.0005 * CONSTANT # '4' on the keypad
                 elif event.key == pygame.K_KP1:
@@ -94,7 +129,9 @@ class Robot:
                 elif event.key == pygame.K_KP3:
                     self.vr -= 0.0005 * CONSTANT # '3' on the keypad
 
-        self.__engine()
+        self.__steering_wheel()
+
+        self.__engine(dt)
 
         # update the position of the robot
         self.__kinematics(dt)

@@ -42,12 +42,12 @@ class Robot:
 
         last_steering = 0
 
-        if self.steering == last_steering:
-            pass
-
-        elif self.steering == 0:
+        if self.steering == 0:
             self.vl = (self.vr + self.vl) / 2
             self.vr = self.vl
+        elif self.steering == last_steering:
+            self.vl += self.steering * 0.0007
+            self.vr += self.steering * 0.0007
         else:
             if self.steering > RIGHT_LIMIT:
                 self.steering = RIGHT_LIMIT
